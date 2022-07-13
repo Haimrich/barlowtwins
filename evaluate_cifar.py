@@ -48,6 +48,8 @@ parser.add_argument('--print-freq', default=100, type=int, metavar='N',
                     help='print frequency')
 parser.add_argument('--checkpoint-dir', default='./checkpoint/lincls/', type=Path,
                     metavar='DIR', help='path to checkpoint directory')
+parser.add_argument('--encoder', default='resnet50', type=str, choices=('resnet18', 'resnet34', 'resnet50'),
+                    help="encoder backbone model")
 
 cifar_mean = {
     'cifar10': (0.4914, 0.4822, 0.4465),
@@ -88,9 +90,15 @@ def main_worker(gpu, args):
     torch.cuda.set_device(gpu)
     torch.backends.cudnn.benchmark = True
 
-    model = models.resnet50()
-    model.fc = nn.Linear(model.fc.in_features, 10 if args.dataset == 'cifar10' else 100)
-    model = model.cuda(gpu)
+    num_classes = 10 if args.dataset == 'cifar10' else 100
+
+    if args.encoder == 'resnet18':
+        model = models.resnet18(num_classes = num_classes).cuda(gpu)
+    elif args.encoder == 'resnet34':
+        model = models.resnet34(num_classes = num_classes).cuda(gpu)
+    else:
+        model = models.resnet50(num_classes = num_classes).cuda(gpu)
+
     state_dict = torch.load(args.pretrained, map_location='cpu')
     missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
     assert missing_keys == ['fc.weight', 'fc.bias'] and unexpected_keys == []
